@@ -48,10 +48,14 @@ def generate_route_graphs(scenario):
         for path in route["route_paths"]:
             for (i, route_section) in enumerate(path["route_sections"]):
                 sn = route_section['sequence_number']
+                rt = route_section['minimum_running_time']
+                res = str(route_section['resource_occupations'])
                 print("Adding Edge from {} to {} with sequence number {}".format(from_node_id(path, route_section, i), to_node_id(path, route_section, i), sn))
                 G.add_edge(from_node_id(path, route_section, i),
                            to_node_id(path, route_section, i),
-                           sequence_number=sn)
+                           sequence_number=sn,
+                           running_time = rt,
+                           resource = res)
 
         route_graphs[route["id"]] = G
 
@@ -59,8 +63,9 @@ def generate_route_graphs(scenario):
     return route_graphs
 
 
-def save_graph(route_graphs):
+def save_graph(route_graphs, output_folder):
     for k, route_graph in route_graphs.items():
+        print("Running save graph for route_graph: ", k)
         for node in route_graph.nodes():
             route_graph.node[node]['label'] = node
 
@@ -74,14 +79,15 @@ def save_graph(route_graphs):
         pos = nx.spring_layout(route_graph)
         nx.draw(route_graph, pos, edge_color='black', width=1, linewidths=1, node_size=500, node_color='pink', alpha=0.9)
         nx.draw_networkx_edge_labels(route_graph,pos,edge_labels=edge_labels,font_color='red')
-        nx.write_graphml(route_graph, "graph-"+str(k)+".graphml")
-        plt.show()
+        nx.write_graphml(route_graph, output_folder + "graph-"+str(k)+".graphml")
+        #plt.show()
 
 # scratch######################################
 
 if __name__ == "__main__":
     scenario = "sample_files/sample_scenario.json"
+    output_folder = "route_graphs/"
     with open(scenario) as fp:
         scenario = json.load(fp)
     route_graphs = generate_route_graphs(scenario)
-    save_graph(route_graphs)
+    save_graph(route_graphs, output_folder)
