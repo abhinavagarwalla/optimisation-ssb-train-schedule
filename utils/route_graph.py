@@ -53,6 +53,7 @@ def generate_route_graphs(scenario):
                 print("Adding Edge from {} to {} with sequence number {}".format(from_node_id(path, route_section, i), to_node_id(path, route_section, i), sn))
                 G.add_edge(from_node_id(path, route_section, i),
                            to_node_id(path, route_section, i),
+                           weight = int(rt[2:-1]),
                            sequence_number=sn,
                            running_time = rt,
                            resource = res)
