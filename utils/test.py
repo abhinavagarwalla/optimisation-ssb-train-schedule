@@ -1,6 +1,8 @@
 from __future__ import print_function
 import collections
 from ortools.sat.python import cp_model
+import sys
+from ortools.constraint_solver import pywrapcp
 
 
 def to_seconds(hr, min, sec):
@@ -19,9 +21,19 @@ section_union_data = [
     ([8], [9])
 ]
 
+# [sections], entry_latest, weight_entry, exit_latest, weight_exit
 latest_info = [
     ([9, 14], None, 0, to_seconds(8,50,00), 1)
 ]
+
+earliest_info = [
+    ([1, 2, 3], to_seconds(8, 20, 00), None),
+    ([5], None, to_seconds(8, 30, 00))
+]
+
+# Total waiting time on each section
+section_time = [ 53, 53, 53, 32, 32+3*60, 32, 32, 32, 32, 32, 32, 32, 32, 32 ]
+
 
 entry_earliest = to_seconds(8, 20, 00)
 exit_latest = to_seconds(8, 50, 00)
@@ -31,17 +43,21 @@ def main():
   # Create the model and solver.
   model = cp_model.CpModel()
   solver = cp_model.CpSolver()
+  
+  solver = pywrapcp.Solver("simple_example")
+  model = solver
+
   # Create the variables.
   num_tracks = 14
-  x = [model.NewBoolVar("x%d"%i) for i in range(num_tracks)]
+  x = [model.IntVar(0, 1, "x%d"%i) for i in range(num_tracks)]
 
-#   s = [model.NewIntVar(entry_earliest, exit_latest, 's%d'%i) for i in range(num_tracks)]
-#   d = [model.NewIntVar(entry_earliest, exit_latest, 's%d'%i) for i in range(num_tracks)]
-
+  s = [model.IntVar(entry_earliest, exit_latest, 's%d'%i) for i in range(num_tracks)]
+  d = [model.IntVar(entry_earliest, exit_latest, 'd%d'%i) for i in range(num_tracks)]
 
 #   s = [model.NewBoolVar("x_%d"%i) for i in range(num_tracks)]
 #   e = []
   # Constraints
+  
 
   # Start-End constraint
   model.Add(x[0]+x[1]+x[2]==1)
@@ -53,28 +69,67 @@ def main():
     model.Add(lhs==rhs)
 
   # Loss function
-#   for constraint in latest_info:
-#       loss = 0
-#       sections = constraint[0]
+  for constraint in latest_info:
+      loss = 0
+      sections = constraint[0]
 
-#       if constraint[1]:
-#           for section in sections:
-#             loss += s[section]*solver.Max
+      if constraint[1]:
+          for section in sections:
+            loss += s[section-1]*constraint[2]*(s[section-1]-solver.Max(s[section-1], constraint[1]))
 
-    
-#       if constraint[3]:
-#           pass
+      if constraint[3]:
+          for section in sections:
+            loss += s[section-1]*constraint[4]*(d[section-1]-solver.Max(d[section-1], constraint[3]))
       
-#       print(loss)
-#       exit(0)
+      print(loss)
+      solver.Add(loss==0)
 
+  # Time constraints
+  for section in range(num_tracks):
+    solver.Add(d[section-1] >= s[section-1] + section_time[section-1])
+
+  for constraint in earliest_info:
+      for section in constraint[0]:
+        if constraint[1]:
+          solver.Add(s[section-1]>=constraint[1])
+        
+        if constraint[2]:
+          solver.Add(d[section-1]>=constraint[2])
+
+    # Consistency Constraints
+  for constraint in section_union_data:
+      start = constraint[0]
+      end = constraint[1]
+      for i in start:
+        for j in end:
+          solver.Add(x[i-1]*x[j-1]*(d[i-1]-s[j-1])==0)
 
   # Create the constraints.
 #   model.Add(x != y)
   # Call the solver.
-  solution_printer = SolutionPrinter(x)
-  status = solver.SearchForAllSolutions(model, solution_printer)
-  print('\nNumber of solutions found: %i' % solution_printer.SolutionCount())
+
+#   solution_printer = SolutionPrinter(x)
+#   status = solver.SearchForAllSolutions(model, solution_printer)
+#   print('\nNumber of solutions found: %i' % solution_printer.SolutionCount())
+
+  all_vars = x+s+d
+  db = solver.Phase(all_vars, solver.CHOOSE_FIRST_UNBOUND, solver.ASSIGN_MIN_VALUE)
+  solver.Solve(db)
+
+  count=0
+  print("Solution", '\n')
+
+  while solver.NextSolution():
+    count += 1
+    for v in all_vars:
+      print('%s = %i' % (v, v.Value()), end = ', ')
+    print()
+    # exit(0)
+    # print("x = ", x.Value())
+    # print("y = ", y.Value())
+    # print("z = ", z.Value())
+  print("Number of solutions: ", count)
+
 
 class SolutionPrinter(cp_model.CpSolverSolutionCallback):
   """Print intermediate solutions."""
