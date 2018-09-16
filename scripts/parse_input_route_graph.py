@@ -2,6 +2,8 @@ import json
 import networkx as nx
 import glob
 import re
+import math
+import sys
 
 #Input File
 INPUT_MODEL = "sample_files/sample_scenario.json"
@@ -73,24 +75,75 @@ class Resource:
 class ServiceIntention:
     def __init__(self, INPUT_MODEL):
         self.input_model = json.loads(open(INPUT_MODEL).read())
+        self.number_service_intentions = 0
         self.section_requirements_dict = {}
         self.parse_section_requirements()
     
     def parse_section_requirements(self):
         res = self.input_model["service_intentions"]
         for service_iter in range(len(res)):
+            self.number_service_intentions += 1
             for resiter in res[service_iter]["section_requirements"]:
-                self.section_requirements_dict[(res[service_iter]['id'], resiter["section_marker"])] = {}
-                for k, v in resiter.items():
-                    if k == "section_marker":
-                        continue
-                    self.section_requirements_dict[(res[service_iter]['id'], resiter["section_marker"])][k] = v
-        print(self.section_requirements_dict)
+                if str(res[service_iter]['id']) not in self.section_requirements_dict.keys():
+                    self.section_requirements_dict[str(res[service_iter]['id'])] = []
+                self.section_requirements_dict[str(res[service_iter]['id'])].append(resiter)
+        # print(self.section_requirements_dict)
     
-    def get_section_requirements(self, service_id, section_marker):
-        if (service_id, section_marker) in self.section_requirements_dict.keys():
-            return self.section_requirements_dict[(service_id, section_marker)]
+    def get_number_service_intentions(self):
+        return self.number_service_intentions
+    
+    def get_section_requirements(self, service_id):
+        if service_id in self.section_requirements_dict.keys():
+            return self.section_requirements_dict[service_id]
         raise Exception("Id not found")
 
-a = ServiceIntention(INPUT_MODEL)
-print(a.get_section_requirements(111, 'A'))
+# a = ServiceIntention(INPUT_MODEL)
+# print(a.get_section_requirements(111))
+
+class BasicTrainProblem:
+    def __init__(self):
+        self._trains = ServiceIntention(INPUT_MODEL)
+        self.num_trains = 1    #self._trains.get_number_service_intentions()
+
+        self.routes = RouteGraph(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
+
+        # self.routes_graph = nx.convert_node_labels_to_integers(self.routes.get_global_graph())
+        print(self.routes.get_global_graph(), self.routes.get_service_intention_graph('111'))
+        self.routes_graph = nx.convert_node_labels_to_integers(self.routes.get_service_intention_graph('111'))
+
+        self.locations = self.routes_graph.nodes()
+        self.num_locations = len(self.locations)
+        # print(self.locations)
+
+        self.original_labels = list(zip(self.locations, self.routes.get_service_intention_graph('111').nodes()))
+        print(self.original_labels)
+        self.time_as_distance = nx.floyd_warshall(self.routes_graph)
+
+        for sx in range(self.num_locations):
+            for ey in range(self.num_locations):
+                if math.isinf(self.time_as_distance[sx][ey]):
+                    self.time_as_distance[sx][ey] = 100000000#sys.maxsize
+
+        self.start_depot = 0  #'(1_beginning)'
+        self.end_depot = 12
+
+        st = self._trains.get_section_requirements('111')
+        start_time = self.to_seconds(st[0]["entry_earliest"])
+        end_time = self.to_seconds(st[-1]["exit_latest"])
+        self.time_windows = []
+        for t in range(len(st)):
+            if t==0 or t == len(st)-1:
+                self.time_windows.append((start_time, end_time))
+            else:
+                if "exit_earliest" in st[t].keys():
+                    self.time_windows.append((self.to_seconds(st[t]["exit_earliest"]), end_time))
+        print(self.time_windows)
+
+    def to_seconds(self, time_str):
+        hr, minu, sec = map(int, time_str.split(':'))
+        return hr*60*60 + minu*60 + sec
+    
+    def get_time_as_distance(self, start_node, end_node):
+        return self.time_as_distance[start_node][end_node]
+
+# a = BasicTrainProblem()

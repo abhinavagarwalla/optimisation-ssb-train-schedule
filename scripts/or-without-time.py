@@ -157,6 +157,60 @@ class CreateDistanceEvaluator(object):
         """Returns the manhattan distance between the two nodes"""
         return self._distances[from_node][to_node]
 
+class CreateTimeEvaluator(object):
+    """Creates callback to get total times between locations."""
+    # @staticmethod
+    # def service_time(data, node):
+    #     """Gets the service time for the specified location."""
+    #     return data.demands[node] * data.time_per_demand_unit
+
+    @staticmethod
+    def travel_time(data, from_node, to_node):
+        """Gets the travel times between two locations."""
+        if from_node == to_node:
+            travel_time = 0
+        else:
+            travel_time = data.get_time_as_distance(from_node, to_node)
+        return travel_time
+
+    def __init__(self, data):
+        """Initializes the total time matrix."""
+        self._total_time = {}
+        # precompute total time to have time callback in O(1)
+        for from_node in xrange(data.num_locations):
+            self._total_time[from_node] = {}
+            for to_node in xrange(data.num_locations):
+                if from_node == to_node:
+                    self._total_time[from_node][to_node] = 0
+                else:
+                    self._total_time[from_node][to_node] = int(self.travel_time(data, from_node, to_node))
+
+    def time_evaluator(self, from_node, to_node):
+        """Returns the total time between the two nodes"""
+        return self._total_time[from_node][to_node]
+
+def add_time_window_constraints(routing, data, time_evaluator):
+    """Add Global Span constraint"""
+    time = "Time"
+    horizon = 10000
+    routing.AddDimension(
+        time_evaluator,
+        horizon, # allow waiting time
+        horizon, # maximum time per vehicle
+        False, # don't force start cumul to zero since we are giving TW to start nodes
+        time)
+    time_dimension = routing.GetDimensionOrDie(time)
+    for location_idx, time_window in enumerate(data.time_windows):
+        if location_idx == 0:
+            continue
+        index = routing.NodeToIndex(location_idx)
+        time_dimension.CumulVar(index).SetRange(time_window[0], time_window[1])
+        routing.AddToAssignment(time_dimension.SlackVar(index))
+    for vehicle_id in xrange(data.num_vehicles):
+        index = routing.Start(vehicle_id)
+        time_dimension.CumulVar(index).SetRange(data.time_windows[0][0], data.time_windows[0][1])
+        routing.AddToAssignment(time_dimension.SlackVar(index))
+
 ###########
 # Printer #
 ###########
@@ -186,6 +240,8 @@ class ConsolePrinter():
     def print(self):
         """Prints assignment on console"""
         # Inspect solution.
+        time_dimension = self.routing.GetDimensionOrDie('Time')
+        total_time = 0
         total_time_dist = 0
         for vehicle_id in xrange(self.data.num_trains):
             index = self.routing.Start(vehicle_id)
@@ -196,16 +252,32 @@ class ConsolePrinter():
                 next_node_index = self.routing.IndexToNode(
                     self.assignment.Value(self.routing.NextVar(index)))
                 route_time_dist += self.data.get_time_as_distance(node_index, next_node_index)
-                plan_output += ' {0} -> {1}, Time: {2}\n'.format(
-                    self.data.original_labels[node_index][1], 
-                    self.data.original_labels[next_node_index][1], route_time_dist)
+                time_var = time_dimension.CumulVar(index)
+                time_min = self.assignment.Min(time_var)
+                time_max = self.assignment.Max(time_var)
+                slack_var = time_dimension.SlackVar(index)
+                slack_min = self.assignment.Min(slack_var)
+                slack_max = self.assignment.Max(slack_var)
+                plan_output += ' {0} -> {1}, Time({2},{3}) Slack({4},{5}) ->'.format(
+                    node_index, next_node_index,
+                    time_min, time_max,
+                    slack_min, slack_max)
                 index = self.assignment.Value(self.routing.NextVar(index))
             total_time_dist += route_time_dist
 
             node_index = self.routing.IndexToNode(index)
-            plan_output += ' {0} \n'.format(node_index)
+            time_var = time_dimension.CumulVar(index)
+            route_time = self.assignment.Value(time_var)
+            time_min = self.assignment.Min(time_var)
+            time_max = self.assignment.Max(time_var)
+            total_time += route_time
+            plan_output += ' {0} -> {1}, Time({2},{3})\n'.format(node_index, next_node_index, time_min, time_max)
+            plan_output += 'Distance of the route: {0}m\n'.format(route_time_dist)
+            plan_output += 'Time of the route: {0}min\n'.format(route_time)
             print(plan_output)
-            print("Total time-distance travelled ", total_time_dist)
+            # plan_output += ' {0} \n'.format(node_index)
+            # print(plan_output)
+            # print("Total time-distance travelled ", total_time_dist)
 
 ########
 # Main #
@@ -225,6 +297,10 @@ def main():
     distance_evaluator = data.get_time_as_distance
     routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator)
 
+    # Add Time Window constraint
+    time_evaluator = CreateTimeEvaluator(data).time_evaluator
+    add_time_window_constraints(routing, data, time_evaluator)
+    
     # Setting first solution heuristic (cheapest addition).
     search_parameters = pywrapcp.RoutingModel.DefaultSearchParameters()
     search_parameters.first_solution_strategy = (
