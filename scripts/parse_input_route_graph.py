@@ -50,6 +50,7 @@ class RouteGraph:
 
     def populate_parameters(self):
         self._number_of_edges = len(self.global_graph.edges)
+
         for node in self.global_graph.nodes:
             in_edges = list(self.global_graph.in_edges(node))
             if not len(in_edges):
@@ -95,6 +96,7 @@ class ServiceIntention:
         self.input_model = json.loads(open(INPUT_MODEL).read())
         self.number_service_intentions = 0
         self._latest_requirements = None
+        self._earliest_requirements = None
         self.section_requirements_dict = {}
         self.parse_section_requirements()
     
@@ -116,13 +118,47 @@ class ServiceIntention:
             return self.section_requirements_dict[service_id]
         raise Exception("Id not found")
     
+    def to_seconds(self, time_str):
+        hr, minu, sec = map(int, time_str.split(':'))
+        return hr*60*60 + minu*60 + sec
+    
+    # TODO Replace section marker with edge name
     # [sections], entry_latest, weight_entry, exit_latest, weight_exit
     def get_latest_requirements(self):
-        self._latest_requirements
-    # def get_earliest_requirements(self):
+        for key, value in self.section_requirements_dict.items():
+            print(key, value)
+            if key in self._latest_requirements.keys():
+                self._latest_requirements[key].append((value['section_marker'],
+                    None if "entry_latest" not in value.keys() else self.to_seconds(value['entry_latest']),
+                    None if "entry_latest" not in value.keys() else value['entry_delay_weight'],
+                    None if "exit_latest" not in value.keys() else self.to_seconds(value['exit_latest']),
+                    None if "exit_latest" not in value.keys() else value['exit_delay_weight']))
+            else:
+                self._latest_requirements[key] = [(value['section_marker'],
+                    None if "entry_latest" not in value.keys() else self.to_seconds(value['entry_latest']),
+                    None if "entry_latest" not in value.keys() else value['entry_delay_weight'],
+                    None if "exit_latest" not in value.keys() else self.to_seconds(value['exit_latest']),
+                    None if "exit_latest" not in value.keys() else value['exit_delay_weight'])]
 
-# a = ServiceIntention(INPUT_MODEL)
-# print(a.get_section_requirements(111))
+        return self._latest_requirements
+    
+    # [sections], entry_earliest, exit_earliest
+    def get_earliest_requirements(self):
+        for key, value in self.section_requirements_dict.items():
+            print(key, value)
+            if key in self._early_requirements.keys():
+                self._early_requirements[key].append((value['section_marker'],
+                    None if "entry_earliest" not in value.keys() else self.to_seconds(value['entry_earliest']),
+                    None if "exit_earliest" not in value.keys() else self.to_seconds(value['exit_earliest']))
+            else:
+                self._early_requirements[key] = [(value['section_marker'],
+                    None if "entry_earliest" not in value.keys() else self.to_seconds(value['entry_earliest']),
+                    None if "exit_earliest" not in value.keys() else self.to_seconds(value['exit_earliest']))
+
+        return self._early_requirements
+
+a = ServiceIntention(INPUT_MODEL)
+print(a.get_latest_requirements())
 
 class BasicTrainProblem:
     def __init__(self, input_model, route_graph_folder):
