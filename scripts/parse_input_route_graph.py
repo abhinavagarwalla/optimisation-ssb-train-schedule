@@ -95,8 +95,8 @@ class ServiceIntention:
     def __init__(self, INPUT_MODEL):
         self.input_model = json.loads(open(INPUT_MODEL).read())
         self.number_service_intentions = 0
-        self._latest_requirements = None
-        self._earliest_requirements = None
+        self._latest_requirements = {}
+        self._earliest_requirements = {}
         self.section_requirements_dict = {}
         self.parse_section_requirements()
     
@@ -126,39 +126,30 @@ class ServiceIntention:
     # [sections], entry_latest, weight_entry, exit_latest, weight_exit
     def get_latest_requirements(self):
         for key, value in self.section_requirements_dict.items():
-            print(key, value)
-            if key in self._latest_requirements.keys():
-                self._latest_requirements[key].append((value['section_marker'],
-                    None if "entry_latest" not in value.keys() else self.to_seconds(value['entry_latest']),
-                    None if "entry_latest" not in value.keys() else value['entry_delay_weight'],
-                    None if "exit_latest" not in value.keys() else self.to_seconds(value['exit_latest']),
-                    None if "exit_latest" not in value.keys() else value['exit_delay_weight']))
-            else:
-                self._latest_requirements[key] = [(value['section_marker'],
-                    None if "entry_latest" not in value.keys() else self.to_seconds(value['entry_latest']),
-                    None if "entry_latest" not in value.keys() else value['entry_delay_weight'],
-                    None if "exit_latest" not in value.keys() else self.to_seconds(value['exit_latest']),
-                    None if "exit_latest" not in value.keys() else value['exit_delay_weight'])]
+            self._latest_requirements[key] = []
+            for v in value:
+                self._latest_requirements[key].append((v['section_marker'],
+                    None if "entry_latest" not in v.keys() else self.to_seconds(v['entry_latest']),
+                    None if "entry_latest" not in v.keys() else v['entry_delay_weight'],
+                    None if "exit_latest" not in v.keys() else self.to_seconds(v['exit_latest']),
+                    None if "exit_latest" not in v.keys() else v['exit_delay_weight']))
 
         return self._latest_requirements
     
     # [sections], entry_earliest, exit_earliest
     def get_earliest_requirements(self):
         for key, value in self.section_requirements_dict.items():
-            print(key, value)
-            if key in self._early_requirements.keys():
-                self._early_requirements[key].append((value['section_marker'],
-                    None if "entry_earliest" not in value.keys() else self.to_seconds(value['entry_earliest']),
-                    None if "exit_earliest" not in value.keys() else self.to_seconds(value['exit_earliest']))
-            else:
-                self._early_requirements[key] = [(value['section_marker'],
-                    None if "entry_earliest" not in value.keys() else self.to_seconds(value['entry_earliest']),
-                    None if "exit_earliest" not in value.keys() else self.to_seconds(value['exit_earliest']))
+            self._earliest_requirements[key] = []
+            for v in value:
+                self._earliest_requirements[key].append((v['section_marker'],
+                    None if "entry_earliest" not in v.keys() else self.to_seconds(v['entry_earliest']),
+                    None if "exit_earliest" not in v.keys() else self.to_seconds(v['exit_earliest'])))
 
-        return self._early_requirements
+        return self._earliest_requirements
 
 a = ServiceIntention(INPUT_MODEL)
 print(a.get_latest_requirements())
+print(a.get_earliest_requirements())
 
 class BasicTrainProblem:
     def __init__(self, input_model, route_graph_folder):
