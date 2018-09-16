@@ -3,13 +3,19 @@ import collections
 from ortools.sat.python import cp_model
 import sys
 from ortools.constraint_solver import pywrapcp
-from parse_input_route_graph import BasicTrainProblem
 
-#Input File
-INPUT_MODEL = "sample_files/sample_scenario.json"
-ROUTE_GRAPH_FOLDER = "route_graphs/*.graphml"
 
-problem = BasicTrainProblem(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
+def to_seconds(hr, min, sec):
+    return hr*60*60+min*60+sec
+
+# section_requirement = {
+#     '1':{
+#         'num_tracks': 14,
+#         'section_union_data': []
+#     }
+# }
+
+# TODO Rearrange data format
 
 num_tracks = 14
 section_union_data = [

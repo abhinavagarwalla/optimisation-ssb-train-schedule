@@ -4,6 +4,7 @@ import glob
 import re
 import math
 import sys
+import itertools
 
 #Input File
 INPUT_MODEL = "sample_files/sample_scenario.json"
@@ -17,6 +18,10 @@ class RouteGraph:
         self.global_graph = None
         self.generate_service_intention_graph()
         self.generate_global_graph()
+
+        self._number_of_edges = None
+        self._incoming_outgoing_edges = []
+        self.populate_parameters()
 
     def generate_service_intention_graph(self):
         for graph in self.route_graph_model:
@@ -42,13 +47,26 @@ class RouteGraph:
         else:
             return -1
         return None
-        
+
+    def populate_parameters(self):
+        self._number_of_edges = len(self.global_graph.edges)
+        for node in self.global_graph.nodes:
+            in_edges = list(self.global_graph.in_edges(node))
+            if not len(in_edges):
+                continue
+            out_edges = list(self.global_graph.out_edges(node))
+            if not len(out_edges):
+                continue
+            edge_unions = list(itertools.product(in_edges, out_edges))
+            self._incoming_outgoing_edges.extend(edge_unions)
+
 # a = RouteGraph(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
-# # gp = a.get_service_intention_graph('113')
+# print(a.)
+# gp = a.get_service_intention_graph('113')
 # gp = a.get_global_graph()
 
-# # for start_node, end_node, data in gp.edges(data=True):
-# #     print(data["running_time"], data["resource"])
+# for start_node, end_node, data in gp.edges(data=True):
+#     print(data["running_time"], data["resource"])
 
 # print("getting travelling itme")
 # print(a.get_travelling_time('(M2)', '(M1)'))
@@ -76,6 +94,7 @@ class ServiceIntention:
     def __init__(self, INPUT_MODEL):
         self.input_model = json.loads(open(INPUT_MODEL).read())
         self.number_service_intentions = 0
+        self._latest_requirements = None
         self.section_requirements_dict = {}
         self.parse_section_requirements()
     
@@ -96,16 +115,21 @@ class ServiceIntention:
         if service_id in self.section_requirements_dict.keys():
             return self.section_requirements_dict[service_id]
         raise Exception("Id not found")
+    
+    # [sections], entry_latest, weight_entry, exit_latest, weight_exit
+    def get_latest_requirements(self):
+        self._latest_requirements
+    # def get_earliest_requirements(self):
 
 # a = ServiceIntention(INPUT_MODEL)
 # print(a.get_section_requirements(111))
 
 class BasicTrainProblem:
-    def __init__(self):
-        self._trains = ServiceIntention(INPUT_MODEL)
+    def __init__(self, input_model, route_graph_folder):
+        self._trains = ServiceIntention(input_model)
         self.num_trains = 1    #self._trains.get_number_service_intentions()
 
-        self.routes = RouteGraph(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
+        self.routes = RouteGraph(input_model, route_graph_folder)
 
         # self.routes_graph = nx.convert_node_labels_to_integers(self.routes.get_global_graph())
         print(self.routes.get_global_graph(), self.routes.get_service_intention_graph('111'))
