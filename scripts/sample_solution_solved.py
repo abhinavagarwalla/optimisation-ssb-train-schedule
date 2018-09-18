@@ -159,10 +159,16 @@ def main():
   store_x = dict()
   store_s = dict()
   store_d = dict()
-
+  store_x_list = list(dict())
+  store_s_list = list(dict())
+  store_d_list = list(dict())
+  val =0
+  number = 2 #as there are two trains
   while solver.NextSolution():
     count += 1
     for v in all_vars:
+      temp = re.split(r'[()]', key)
+      value == int((temp[0])[1:])
       if(str(v)[0] == "x"):
         store_x[str(v)] =  v.Value()
       elif(str(v)[0] == "s"):
@@ -171,21 +177,25 @@ def main():
       elif(str(v)[0] == "d"):
         temp = re.split(r'[()]', str(v)[1:])
         store_d[temp[0]] = to_actual_time(v.Value())
-      print(v)
-    print(store_x)
-    print(store_s)
-    print(store_d)
-    for key, value in store_x.items():
-      #print(key,value)
-      if(value == 1):
-        temp = re.split(r'[()]', key)
-        data['entry_time'] = store_s[temp[1]]
-        data['exit_time'] = store_d[temp[1]]
-        data['route'] = "11" + (temp[0])[1:]
-        data['route_section_id'] = "11" + (temp[0])[1:] + "#" + "__"
-        with open('data.json', 'w') as outfile:
-          json.dump(data, outfile)
+      
+      if( val != value):
+        val = value
+
+        for key, value in store_x.items():
+          #print(key,value)
+          if(value == 1):
+            temp = re.split(r'[()]', key)
+            data['entry_time'] = store_s[temp[1]]
+            data['exit_time'] = store_d[temp[1]]
+            data['route'] = "11" + (temp[0])[1:]
+            data['route_section_id'] = "11" + (temp[0])[1:] + "#" + "__"
+            with open('data.json', 'w') as outfile:
+              json.dump(data, outfile)
     break
+  print(v)
+  print(store_x)
+  print(store_s)
+  print(store_d)
   print("Number of solutions: ", count)
   print("should exit")
 
