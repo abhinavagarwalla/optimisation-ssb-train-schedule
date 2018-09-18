@@ -3,16 +3,27 @@ import collections
 from ortools.sat.python import cp_model
 import sys
 from ortools.constraint_solver import pywrapcp
+import math
+import json
+import re
 
 
 def to_seconds(hr, min, sec):
     return hr*60*60+min*60+sec
 
+def to_actual_time(time):
+    time = int(time)
+    hr = int(math.floor(time/3600))
+    min  = int((time%3600)/60)
+    sec = int((time%3600)%60)
+    res =  "{:02d}:{:02d}:{:02d}".format(hr, min, sec)
+    return res
+
 # section_requirement = {
 #     '1':{
 #         'num_tracks': 14,
 #         'section_union_data': []
-#     }
+# #     }
 # }
 
 # TODO Rearrange data format
@@ -144,11 +155,36 @@ def main():
 
   count=0
   print("Solution", '\n')
+  data = dict()
+  store_x = dict()
+  store_s = dict()
+  store_d = dict()
 
   while solver.NextSolution():
     count += 1
     for v in all_vars:
-      print('%s = %i' % (v, v.Value()), end = ', ')
+      if(str(v)[0] == "x"):
+        store_x[str(v)] =  v.Value()
+      elif(str(v)[0] == "s"):
+        temp = re.split(r'[()]', str(v)[1:])
+        store_s[temp[0]] = to_actual_time(v.Value())
+      elif(str(v)[0] == "d"):
+        temp = re.split(r'[()]', str(v)[1:])
+        store_d[temp[0]] = to_actual_time(v.Value())
+      print(v)
+    print(store_x)
+    print(store_s)
+    print(store_d)
+    for key, value in store_x.items():
+      #print(key,value)
+      if(value == 1):
+        temp = re.split(r'[()]', key)
+        data['entry_time'] = store_s[temp[1]]
+        data['exit_time'] = store_d[temp[1]]
+        data['route'] = "11" + (temp[0])[1:]
+        data['route_section_id'] = "11" + (temp[0])[1:] + "#" + "__"
+        with open('data.json', 'w') as outfile:
+          json.dump(data, outfile)
     break
   print("Number of solutions: ", count)
   print("should exit")
