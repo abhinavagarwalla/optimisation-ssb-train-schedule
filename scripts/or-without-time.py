@@ -287,7 +287,7 @@ def main():
     # Instantiate the data problem.
     # data = DataProblem()
 
-    data = BasicTrainProblem()
+    data = BasicTrainProblemORTools()
     print(data.num_locations, data.num_trains, data.start_depot)
 
     # Create Routing Model

@@ -56,6 +56,7 @@ def generate_route_graphs(scenario):
                 py = ""
                 if route_section['penalty'] is not None:
                     py = route_section['penalty']
+                
                 print("Adding Edge from {} to {} with sequence number {}".format(from_node_id(path, route_section, i), to_node_id(path, route_section, i), sn))
                 G.add_edge(from_node_id(path, route_section, i),
                            to_node_id(path, route_section, i),
