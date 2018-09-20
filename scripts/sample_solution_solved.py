@@ -6,7 +6,7 @@ from ortools.constraint_solver import pywrapcp
 import math
 import json
 import re
-
+import copy
 
 def to_seconds(hr, min, sec):
     return hr*60*60+min*60+sec
@@ -155,47 +155,54 @@ def main():
 
   count=0
   print("Solution", '\n')
-  data = dict()
-  store_x = dict()
-  store_s = dict()
-  store_d = dict()
-  store_x_list = list(dict())
-  store_s_list = list(dict())
-  store_d_list = list(dict())
-  val =0
-  number = 2 #as there are two trains
+
+  ans = {}
   while solver.NextSolution():
     count += 1
     for v in all_vars:
-      temp = re.split(r'[()]', key)
-      value == int((temp[0])[1:])
       if(str(v)[0] == "x"):
-        store_x[str(v)] =  v.Value()
-      elif(str(v)[0] == "s"):
-        temp = re.split(r'[()]', str(v)[1:])
-        store_s[temp[0]] = to_actual_time(v.Value())
-      elif(str(v)[0] == "d"):
-        temp = re.split(r'[()]', str(v)[1:])
-        store_d[temp[0]] = to_actual_time(v.Value())
-      
-      if( val != value):
-        val = value
+        service_key = re.split(r'[()]', str(v)[1:])[0]
+        if service_key not in ans.keys():
+          ans[service_key] = {}
+        section_key = re.split(r'[()]', str(v)[1:])[1]
+        if section_key not in ans[service_key].keys():
+          ans[service_key][section_key] = {}
+      else:
+        section_key = re.split(r'[()]', str(v)[1:])[0]
 
-        for key, value in store_x.items():
-          #print(key,value)
-          if(value == 1):
-            temp = re.split(r'[()]', key)
-            data['entry_time'] = store_s[temp[1]]
-            data['exit_time'] = store_d[temp[1]]
-            data['route'] = "11" + (temp[0])[1:]
-            data['route_section_id'] = "11" + (temp[0])[1:] + "#" + "__"
-            with open('data.json', 'w') as outfile:
-              json.dump(data, outfile)
-    break
-  print(v)
-  print(store_x)
-  print(store_s)
-  print(store_d)
+      if(str(v)[0] == "x"):
+        ans[service_key][section_key][str(v)[0]] = int(re.split(r'[()]', str(v)[1:])[-2])
+      else:
+        ans[service_key][section_key][str(v)[0]] = to_actual_time(re.split(r'[()]', str(v)[1:])[-2])
+
+    print(ans)
+    
+    with open('sample_submission.json', mode='w') as outfile:
+      outputdump = {"problem_instance_label": "SBB_challenge_sample_scenario_with_routing_alternatives",
+                    "problem_instance_hash": -1254734547,
+                    "hash": 1538680897,
+                    "train_runs": []}
+      for service_intention_id, val  in ans.items():
+        data = dict()
+        data['service_intention_id'] = service_intention_id
+        data["train_run_sections"] = []
+        sqn = 1
+        for section_key, info in val.items():
+          data2 = {}
+          if(info['x']==1):
+            data2['entry_time'] = info['s']
+            data2['exit_time'] = info['d']
+            data2['route'] = int(service_intention_id)
+            data2['route_section_id'] = str(service_intention_id) + "#" + str(int(section_key)+1)
+            data2['sequence_number'] = sqn
+            sqn += 1
+            data2['route_path'] = None
+            data2['section_requirement'] = None
+            data['train_run_sections'].append(copy.deepcopy(data2))
+        outputdump['train_runs'].append(copy.deepcopy(data))
+      json.dump(outputdump, outfile)
+
+    break        
   print("Number of solutions: ", count)
   print("should exit")
 
