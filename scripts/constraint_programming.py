@@ -11,49 +11,47 @@ ROUTE_GRAPH_FOLDER = "route_graphs/*.graphml"
 
 problem = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
 
-num_tracks = problem.num_sections()
+num_tracks = problem.num_sections
 section_union_data = problem.section_unions()
 
 # [sections], entry_latest, weight_entry, exit_latest, weight_exit
-latest_info = problem.latest_requirements()
+latest_requirements = problem.latest_requirements()
 
-earliest_info = problem.earliest_requirements()
+earliest_requirements = problem.earliest_requirements()
 
 # Total waiting time on each section
 section_time = problem.minimum_running_times()
 
-entry_earliest1 = to_seconds(8, 20, 00)
-exit_latest1 = to_seconds(8, 50, 00)
-
-entry_earliest2 = to_seconds(7, 50, 00)
-exit_latest2 = to_seconds(8, 16, 00)
-
+entry_earliest = {k:v[0][1] for k,v in earliest_requirements.items()}
+exit_latest = {k:v[-1][-2] for k,v in latest_requirements.items()}
 
 def main():
   # Create the model and solver.
   model = cp_model.CpModel()
   solver = cp_model.CpSolver()
   
-  solver = pywrapcp.Solver("simple_example")
+  solver = pywrapcp.Solver("sample_problem")
   model = solver
 
   # Create the variables.
-  num_tracks = 14
-  x1 = [model.IntVar(0, 1, "x1(%d)"%i) for i in range(num_tracks)]
-  x2 = [model.IntVar(0, 1, "x2(%d)"%i) for i in range(num_tracks)]
+  section_visit_bool = {service_intention_number: [model.IntVar(0, 1, "x{}({})".format(service_intention_number, i)) for i in range(num_tracks[service_intention_number])] for service_intention_number in num_tracks.keys()}
 
-  s1 = [model.IntVar(entry_earliest1, exit_latest1, 's%d'%i) for i in range(num_tracks)]
-  d1 = [model.IntVar(entry_earliest1, exit_latest1, 'd%d'%i) for i in range(num_tracks)]
+  section_entry_time = {service_intention_number: [model.IntVar(entry_earliest[service_intention_number], exit_latest[service_intention_number], "s{}({})".format(service_intention_number, i)) for i in range(num_tracks[service_intention_number])] for service_intention_number in num_tracks.keys()}
 
-  s2 = [model.IntVar(entry_earliest2, exit_latest2, 's%d'%i) for i in range(num_tracks)]
-  d2 = [model.IntVar(entry_earliest2, exit_latest2, 'd%d'%i) for i in range(num_tracks)]
-
-#   s = [model.NewBoolVar("x_%d"%i) for i in range(num_tracks)]
-#   e = []
-  # Constraints
+  section_exit_time = {service_intention_number: [model.IntVar(entry_earliest[service_intention_number], exit_latest[service_intention_number], "d{}({})".format(service_intention_number, i)) for i in range(num_tracks[service_intention_number])] for service_intention_number in num_tracks.keys()}
   
+  # list(zip(section_visit_bool, section_entry_time, section_exit_time, earliest_info, latest_info)))
+ 
+  # Constraints  
   all_vars = []
-  for x, s, d, earliest_info, latest_info in [(x1, s1, d1, earliest_info1, latest_info1), (x2, s2, d2, earliest_info2, latest_info2)]:
+  for service_intention in num_tracks.keys():
+    
+    x = section_visit_bool[service_intention]
+    s = section_entry_time[service_intention]
+    d = section_exit_time[service_intention]
+    earliest_info = earliest_requirements[service_intention]
+    latest_info = latest_requirements[service_intention]
+
     # Start-End constraint
     model.Add(x[0]+x[1]+x[2]==1)
 

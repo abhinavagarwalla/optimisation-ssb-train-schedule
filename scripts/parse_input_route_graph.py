@@ -223,9 +223,9 @@ class TrainProblemConstrained:
     def section_marker_to_sequence_number(self, service_intention, section_marker):
         return self._routes.section_marker_to_sequence_number(service_intention, section_marker)
 
-# a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
-# print(a.latest_requirements())
-# print(a.earliest_requirements())
+a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
+print(a.latest_requirements())
+print(a.earliest_requirements())
 # print(a.section_unions())
 # print(a.minimum_running_times())
 
