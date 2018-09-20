@@ -3,47 +3,24 @@ import collections
 from ortools.sat.python import cp_model
 import sys
 from ortools.constraint_solver import pywrapcp
-from parse_input_route_graph import BasicTrainProblem
+from parse_input_route_graph import TrainProblemConstrained
 
 #Input File
 INPUT_MODEL = "sample_files/sample_scenario.json"
 ROUTE_GRAPH_FOLDER = "route_graphs/*.graphml"
 
-problem = BasicTrainProblem(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
+problem = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
 
-num_tracks = 14
-section_union_data = [
-    ([1,2,3], [4]),
-    ([4], [5]),
-    ([5], [6, 7]),
-    ([6], [10, 11]),
-    ([11], [12]),
-    ([10], [13]),
-    ([12,13], [14]),
-    ([7], [8]),
-    ([8], [9])
-]
+num_tracks = problem.num_sections()
+section_union_data = problem.section_unions()
 
 # [sections], entry_latest, weight_entry, exit_latest, weight_exit
-latest_info1 = [
-    ([9, 14], None, 0, to_seconds(8,50,00), 1)
-]
-latest_info2 = [
-    ([9, 14], None, 0, to_seconds(8,16,00), 1)
-]
+latest_info = problem.latest_requirements()
 
-earliest_info1 = [
-    ([1, 2, 3], to_seconds(8, 20, 00), None),
-    ([5], None, to_seconds(8, 30, 00))
-]
-
-earliest_info2 = [
-    ([1, 2, 3], to_seconds(7, 50, 00), None),
-]
+earliest_info = problem.earliest_requirements()
 
 # Total waiting time on each section
-section_time = [ 53, 53, 53, 32, 32+3*60, 32, 32, 32, 32, 32, 32, 32, 32, 32 ]
-
+section_time = problem.minimum_running_times()
 
 entry_earliest1 = to_seconds(8, 20, 00)
 exit_latest1 = to_seconds(8, 50, 00)
