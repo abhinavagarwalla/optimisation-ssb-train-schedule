@@ -21,7 +21,7 @@ class RouteGraph:
 
         self._number_of_sections = {}
         self._number_of_service_intention_graphs = None
-        self._incoming_outgoing_edges = []
+        self._incoming_outgoing_edges = {}
         self._section_travelling_times = {}
         self.populate_parameters()
 
@@ -53,21 +53,25 @@ class RouteGraph:
     def edge_to_sequence_number(self, service_intention, start_node, end_node):
         if service_intention in self.service_intention_graphs.keys():
             if (start_node, end_node) in self.service_intention_graphs[service_intention].edges():
-                return self._section_travelling_times[service_intention].edges[(start_node, end_node)]["sequence_number"]
+                return self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["sequence_number"]
         return None
     
     def section_marker_to_sequence_number(self, service_intention, section_marker):
+        edge_list = []
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
                 if 'section_marker' in data and data["section_marker"] == section_marker:
-                    return self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["sequence_number"]
+                    edge_list.append(self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["sequence_number"])
+            return edge_list
         return None
 
     def section_marker_to_edge(self, service_intention, section_marker):
+        edge_list = []
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
                 if 'section_marker' in data and data["section_marker"] == section_marker:
-                    return (start_node, end_node)
+                    edge_list.append((start_node, end_node))
+            return edge_list
         return None
     
     def populate_parameters(self):
@@ -75,15 +79,18 @@ class RouteGraph:
 
         self._number_of_sections = {k:v.number_of_edges() for k, v in self.service_intention_graphs.items()}
 
-        for node in self.global_graph.nodes:
-            in_edges = list(self.global_graph.in_edges(node))
-            if not len(in_edges):
-                continue
-            out_edges = list(self.global_graph.out_edges(node))
-            if not len(out_edges):
-                continue
-            # edge_unions = list(itertools.product(in_edges, out_edges))
-            self._incoming_outgoing_edges.append((in_edges, out_edges))
+        for k, v in self.service_intention_graphs.items():
+            edge_list = []
+            for node in v.nodes:
+                in_edges = list(v.in_edges(node))
+                if not len(in_edges):
+                    continue
+                out_edges = list(v.out_edges(node))
+                if not len(out_edges):
+                    continue
+                # edge_unions = list(itertools.product(in_edges, out_edges))
+                edge_list.append((in_edges, out_edges))
+            self._incoming_outgoing_edges[k] = edge_list
         
         for k, v in self.service_intention_graphs.items():
             self._section_travelling_times[k] = {}
@@ -208,7 +215,9 @@ class TrainProblemConstrained:
             for sec in v:
                 if 'min_stopping_time' in sec:
                     edge = self._routes.section_marker_to_edge(k, sec['section_marker'])
-                    waiting_times[k][edge] = int(sec['min_stopping_time'][2:-1])*60
+                    if edge is not None:
+                        for e in edge:
+                            waiting_times[k][e] = int(sec['min_stopping_time'][2:-1])*60
 
         for service, times in run_times.items():
             if service in waiting_times.keys():
@@ -223,9 +232,12 @@ class TrainProblemConstrained:
     def section_marker_to_sequence_number(self, service_intention, section_marker):
         return self._routes.section_marker_to_sequence_number(service_intention, section_marker)
 
-a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
-print(a.latest_requirements())
-print(a.earliest_requirements())
+    def section_marker_to_edge(self, service_intention, section_marker):
+        return self._routes.section_marker_to_edge(service_intention, section_marker)
+
+# a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
+# print(a.latest_requirements())
+# print(a.earliest_requirements())
 # print(a.section_unions())
 # print(a.minimum_running_times())
 
