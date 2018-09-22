@@ -74,6 +74,17 @@ class RouteGraph:
             return edge_list
         return None
     
+    def sequence_number_to_section_marker(self, service_intention, sequence_number):
+        sequence_number = int(sequence_number)
+        if service_intention in self.service_intention_graphs.keys():
+            for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
+                if 'sequence_number' in data.keys() and data['sequence_number'] == sequence_number:
+                    if 'section_marker' in data.keys():
+                        return data['section_marker']
+                    else:
+                        return None
+        return None
+    
     def populate_parameters(self):
         self._number_of_service_intention_graphs = len(self.service_intention_graphs)
 
@@ -234,6 +245,9 @@ class TrainProblemConstrained:
 
     def section_marker_to_edge(self, service_intention, section_marker):
         return self._routes.section_marker_to_edge(service_intention, section_marker)
+
+    def sequence_number_to_section_marker(self, service_intention, sequence_number):
+        return self._routes.sequence_number_to_section_marker(service_intention, sequence_number)
 
     def to_actual_time(self, time):
         time = int(time)

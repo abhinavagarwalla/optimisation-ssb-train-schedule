@@ -178,8 +178,12 @@ def write_output_to_json(all_vars, problem):
           data2['route_section_id'] = str(service_intention_id) + "#" + str(int(section_key)+1)
           data2['sequence_number'] = sqn
           sqn += 1
-          data2['route_path'] = None
-          data2['section_requirement'] = None
+          sections = problem.section_marker_to_sequence_number(service_intention_id, problem.sequence_number_to_section_marker(service_intention_id, str(int(section_key)+1)))
+          if len(sections) <= 1:
+            data2['route_path'] = 1
+          else:
+            data2['route_path'] = sections.index(int(section_key)+1) + 1
+          data2['section_requirement'] = problem.sequence_number_to_section_marker(service_intention_id, int(section_key)+1)
           data['train_run_sections'].append(copy.deepcopy(data2))
       outputdump['train_runs'].append(copy.deepcopy(data))
     json.dump(outputdump, outfile)
