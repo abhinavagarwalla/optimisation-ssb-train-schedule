@@ -235,6 +235,14 @@ class TrainProblemConstrained:
     def section_marker_to_edge(self, service_intention, section_marker):
         return self._routes.section_marker_to_edge(service_intention, section_marker)
 
+    def to_actual_time(self, time):
+        time = int(time)
+        hr = int(math.floor(time/3600))
+        minu  = int((time%3600)/60)
+        sec = int((time%3600)%60)
+        res =  "{:02d}:{:02d}:{:02d}".format(hr, minu, sec)
+        return res
+
 # a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
 # print(a.latest_requirements())
 # print(a.earliest_requirements())
