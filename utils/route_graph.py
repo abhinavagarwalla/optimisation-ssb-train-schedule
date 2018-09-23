@@ -5,7 +5,7 @@ import time
 import pathlib
 import tempfile
 import matplotlib.pyplot as plt
-
+import isodate
 
 def from_node_id(route_path, route_section, index_in_path):
     if "route_alternative_marker_at_entry" in route_section.keys() and \
@@ -58,9 +58,10 @@ def generate_route_graphs(scenario):
                     py = route_section['penalty']
                 
                 print("Adding Edge from {} to {} with sequence number {}".format(from_node_id(path, route_section, i), to_node_id(path, route_section, i), sn))
+                # print(sn, rt, res, sm, py)
                 G.add_edge(from_node_id(path, route_section, i),
                            to_node_id(path, route_section, i),
-                           weight = int(rt[2:-1]),
+                           weight = int(isodate.parse_duration(rt).total_seconds()),
                            sequence_number=sn,
                            running_time = rt,
                            resource = res,
@@ -95,8 +96,9 @@ def save_graph(route_graphs, output_folder):
 # scratch######################################
 
 if __name__ == "__main__":
-    scenario = "sample_files/sample_scenario.json"
-    output_folder = "route_graphs/"
+    problem_str = "01_dummy"
+    scenario = "sample_files/" + problem_str + ".json"
+    output_folder = "route_graphs/" + problem_str + "/"
     with open(scenario) as fp:
         scenario = json.load(fp)
     route_graphs = generate_route_graphs(scenario)

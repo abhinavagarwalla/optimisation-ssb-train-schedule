@@ -5,10 +5,12 @@ import re
 import math
 import sys
 import itertools
+import ast
+import isodate
 
 #Input File
-INPUT_MODEL = "sample_files/sample_scenario.json"
-ROUTE_GRAPH_FOLDER = "route_graphs/*.graphml"
+# INPUT_MODEL = "sample_files/sample_scenario.json"
+# ROUTE_GRAPH_FOLDER = "route_graphs/*.graphml"
 
 class RouteGraph:
     def __init__(self, INPUT_MODEL, ROUTE_GRAPH_FOLDER):
@@ -28,12 +30,12 @@ class RouteGraph:
     def generate_service_intention_graph(self):
         for graph in self.route_graph_model:
             sid = graph.split('.')[0].split('-')[-1]
+            print("Reading graph for service-", sid)
             self.service_intention_graphs[sid] = nx.read_graphml(graph)
             # print(self.service_intention_graphs[sid], self.service_intention_graphs[sid].edges)
     
     def generate_global_graph(self):
         self.global_graph = nx.compose_all(self.service_intention_graphs.values())
-        # print(self.global_graph, self.global_graph.edges)
 
     def get_service_intention_graph(self, id):
         if id in self.service_intention_graphs.keys():
@@ -60,7 +62,7 @@ class RouteGraph:
         edge_list = []
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
-                if 'section_marker' in data and data["section_marker"] == section_marker:
+                if 'section_marker' in data.keys() and data["section_marker"] == section_marker:
                     edge_list.append(self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["sequence_number"])
             return edge_list
         return None
@@ -69,7 +71,7 @@ class RouteGraph:
         edge_list = []
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
-                if 'section_marker' in data and data["section_marker"] == section_marker:
+                if 'section_marker' in data.keys() and data["section_marker"] == section_marker:
                     edge_list.append((start_node, end_node))
             return edge_list
         return None
@@ -85,6 +87,18 @@ class RouteGraph:
                         return None
         return None
     
+    def get_sections_with_resource(self, service_intention):
+        edge_list = {}
+        if service_intention in self.service_intention_graphs.keys():
+            for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
+                if 'resource' in data.keys():
+                    resource_data = ast.literal_eval(data['resource'])
+                    edge_list[(start_node, end_node)] = []
+                    for r in resource_data:
+                        edge_list[(start_node, end_node)].append(r['resource'])
+            return edge_list
+        return None
+
     def populate_parameters(self):
         self._number_of_service_intention_graphs = len(self.service_intention_graphs)
 
@@ -128,7 +142,7 @@ class Resource:
     def parse_release_times(self):
         res = self.input_model['resources']
         for resiter in res:
-            self.release_time_dict[resiter['id']] = resiter['release_time']
+            self.release_time_dict[resiter['id']] = int(isodate.parse_duration(resiter['release_time']).total_seconds())
     
     def get_release_time(self, resource_id):
         if resource_id in self.release_time_dict.keys():
@@ -169,7 +183,6 @@ class ServiceIntention:
         hr, minu, sec = map(int, time_str.split(':'))
         return hr*60*60 + minu*60 + sec
     
-    # TODO Replace section marker with edge name
     # [sections], entry_latest, weight_entry, exit_latest, weight_exit
     def get_latest_requirements(self):
         for key, value in self.section_requirements_dict.items():
@@ -202,6 +215,7 @@ class TrainProblemConstrained:
     def __init__(self, input_model, route_graph_folder):
         self._trains = ServiceIntention(input_model)
         self._routes = RouteGraph(input_model, route_graph_folder)
+        self._resource = Resource(input_model)
 
         self.num_trains = self._trains.get_number_service_intentions()
         self.num_sections = self._routes._number_of_sections
@@ -228,7 +242,7 @@ class TrainProblemConstrained:
                     edge = self._routes.section_marker_to_edge(k, sec['section_marker'])
                     if edge is not None:
                         for e in edge:
-                            waiting_times[k][e] = int(sec['min_stopping_time'][2:-1])*60
+                            waiting_times[k][e] = int(isodate.parse_duration(sec['min_stopping_time']).total_seconds())
 
         for service, times in run_times.items():
             if service in waiting_times.keys():
@@ -256,6 +270,19 @@ class TrainProblemConstrained:
         sec = int((time%3600)%60)
         res =  "{:02d}:{:02d}:{:02d}".format(hr, minu, sec)
         return res
+
+    def get_sections_with_resource(self, service_intention):
+        res = self._routes.get_sections_with_resource(service_intention)
+        return res
+
+    def get_common_resources(self, resouce_dict_1, resource_dict_2):
+        common = resouce_dict_1.keys() & resource_dict_2.keys()
+        return common
+
+    def get_release_time(self, resource):
+        if resource in self._resource.release_time_dict.keys():
+            return self._resource.release_time_dict[resource]
+        return None
 
 # a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
 # print(a.latest_requirements())

@@ -10,9 +10,10 @@ import re
 import copy
 
 #Input File
-INPUT_MODEL = "sample_files/sample_scenario.json"
-ROUTE_GRAPH_FOLDER = "route_graphs/*.graphml"
-OUTPUT_MODEL_FILE = "sample_files/sample_scenario_solution_ours.json"
+problem_string = "01_dummy"
+INPUT_MODEL = "sample_files/" + problem_string + ".json"
+ROUTE_GRAPH_FOLDER = "route_graphs/" + problem_string + "/*.graphml"
+OUTPUT_MODEL_FILE = "sample_files/" + problem_string + "_solution_ours.json"
 
 problem = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
 
@@ -103,6 +104,7 @@ def main():
       edge = problem.edge_to_sequence_number(service_intention, section[0], section[1])
       solver.Add(d[edge - 1] >= s[edge - 1] + section_time[service_intention][section])
   
+    # Earliest time constraint
     for constraint in earliest_requirements[service_intention]:
       sections = problem.section_marker_to_sequence_number(service_intention, constraint[0])
       for section in sections:
@@ -113,7 +115,7 @@ def main():
         if constraint[2] is not None:
           solver.Add(d[section-1]>=constraint[2])
   
-    # Consistency Constraints
+    # Consistent entry-exit time constraint
     for constraint in section_union_data[service_intention]:
       start = constraint[0]
       end = constraint[1]
@@ -124,6 +126,29 @@ def main():
           solver.Add(x[si-1]*x[sj-1]*(d[si-1]-s[sj-1])==0)
 
     all_vars = all_vars+x+s+d
+
+  service_intention_keys = list(num_tracks.keys())
+  #Could be made more efficient
+  for i in range(len(service_intention_keys)-1):
+    for j in range(i+1, len(service_intention_keys)):
+      service_intention_1 = service_intention_keys[i]
+      service_intention_2 = service_intention_keys[j]
+      resource_sections_1 = problem.get_sections_with_resource(service_intention_1)
+      resource_sections_2 = problem.get_sections_with_resource(service_intention_2)
+      common_resource = problem.get_common_resources(resource_sections_1, resource_sections_2)
+
+      for cr in common_resource:
+        section1 = problem.edge_to_sequence_number(service_intention_1, cr[0], cr[1])
+        section2 = problem.edge_to_sequence_number(service_intention_2, cr[0], cr[1])
+        a = section_entry_time[service_intention_1][section1-1]
+        b = section_entry_time[service_intention_2][section2-1]
+        c = section_exit_time[service_intention_1][section1-1]
+        d = section_exit_time[service_intention_2][section2-1]
+        for res in resource_sections_1[cr]:
+          dR = problem.get_release_time(res)
+          # print(common_resource, resource_sections_1, dR)
+          model.Add((a >= b)*(a) >= (a >= b)*(d + dR))
+          model.Add((a <= b)*(b) >= (a <= b)*(c + dR))
 
   db = solver.Phase(all_vars, solver.CHOOSE_FIRST_UNBOUND, solver.ASSIGN_MIN_VALUE)
   solutions_limit = solver.SolutionsLimit(1)
