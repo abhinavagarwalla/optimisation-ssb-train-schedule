@@ -52,10 +52,10 @@ class RouteGraph:
             return -1
         return None
     
-    def edge_to_sequence_number(self, service_intention, start_node, end_node):
+    def edge_to_track_wise_sequence_number(self, service_intention, start_node, end_node):
         if service_intention in self.service_intention_graphs.keys():
             if (start_node, end_node) in self.service_intention_graphs[service_intention].edges():
-                return self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["sequence_number"]
+                return self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["track_wise_sequence_number"]
         return None
     
     def section_marker_to_sequence_number(self, service_intention, section_marker):
@@ -63,7 +63,7 @@ class RouteGraph:
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
                 if 'section_marker' in data.keys() and data["section_marker"] == section_marker:
-                    edge_list.append(self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["sequence_number"])
+                    edge_list.append(self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["track_wise_sequence_number"])
             return edge_list
         return None
 
@@ -252,7 +252,7 @@ class TrainProblemConstrained:
         return run_times
 
     def edge_to_sequence_number(self, service_intention, start_node, end_node):
-        return self._routes.edge_to_sequence_number(service_intention, start_node, end_node)
+        return self._routes.edge_to_track_wise_sequence_number(service_intention, start_node, end_node)
     
     def section_marker_to_sequence_number(self, service_intention, section_marker):
         return self._routes.section_marker_to_sequence_number(service_intention, section_marker)

@@ -69,16 +69,23 @@ def main():
     end_marker = latest_requirements[service_intention][0][0]
     end_edges = problem.section_marker_to_sequence_number(service_intention, end_marker)
 
-    start_constaint = sum(x[index] for index in start_edges)
-    end_constraint = sum(x[index] for index in end_edges)
+    start_constaint = sum(x[index-1] for index in start_edges)
+    end_constraint = sum(x[index-1] for index in end_edges)
     model.Add(start_constaint == 1)
     model.Add(end_constraint == 1)
 
     # Path constraints
     for constraint in section_union_data[service_intention]:
-      lhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[0] ])
-      rhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[1] ])
-      model.Add(lhs==rhs)
+      try:
+        lhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[0] ])
+        rhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[1] ])
+        model.Add(lhs==rhs)
+      except:
+        print("\n########################\n")
+        print(constraint, service_intention, len(x))
+        print(problem.edge_to_sequence_number(service_intention, constraint[0][0][0], constraint[0][0][1])-1)
+        print(problem.edge_to_sequence_number(service_intention, constraint[0][-1][0], constraint[0][-1][1])-1)
+        raise Exception("Exiting..")
 
     # Loss function
     for constraint in latest_requirements[service_intention]:

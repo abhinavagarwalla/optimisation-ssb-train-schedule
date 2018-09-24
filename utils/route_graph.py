@@ -44,21 +44,23 @@ def generate_route_graphs(scenario):
         # set global graph settings
         G = nx.DiGraph(route_id = route["id"], name="Route-Graph for route "+str(route["id"]))
 
+        track_wise_sequence_number = 0
         # add edges with data contained in the preprocessed graph
         for path in route["route_paths"]:
             for (i, route_section) in enumerate(path["route_sections"]):
                 sn = route_section['sequence_number']
                 rt = route_section['minimum_running_time']
                 res = str(route_section['resource_occupations'])
-                sm = ""
+                sm = ''
                 if 'section_marker' in route_section.keys():
                     sm = route_section['section_marker'][0]
-                py = ""
+                py = 0.0
                 if route_section['penalty'] is not None:
                     py = route_section['penalty']
                 
+                track_wise_sequence_number += 1
                 print("Adding Edge from {} to {} with sequence number {}".format(from_node_id(path, route_section, i), to_node_id(path, route_section, i), sn))
-                # print(sn, rt, res, sm, py)
+                print(sn, rt, res, sm, py)
                 G.add_edge(from_node_id(path, route_section, i),
                            to_node_id(path, route_section, i),
                            weight = int(isodate.parse_duration(rt).total_seconds()),
@@ -66,7 +68,8 @@ def generate_route_graphs(scenario):
                            running_time = rt,
                            resource = res,
                            section_marker = sm,
-                           penalty = py)
+                           penalty = py,
+                           track_wise_sequence_number = track_wise_sequence_number)
 
         route_graphs[route["id"]] = G
 
