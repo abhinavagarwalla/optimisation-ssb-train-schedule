@@ -93,9 +93,10 @@ class RouteGraph:
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
                 if 'resource' in data.keys():
                     resource_data = ast.literal_eval(data['resource'])
-                    edge_list[(start_node, end_node)] = []
                     for r in resource_data:
-                        edge_list[(start_node, end_node)].append(r['resource'])
+                        if r['resource'] not in edge_list.keys():
+                            edge_list[r['resource']] = []
+                        edge_list[r['resource']].append((start_node, end_node))
             return edge_list
         return None
 
@@ -283,6 +284,23 @@ class TrainProblemConstrained:
         if resource in self._resource.release_time_dict.keys():
             return self._resource.release_time_dict[resource]
         return None
+
+    def get_path_from_section(self, section_form_path):
+        start_edge = []
+        end_edge = []
+        for section_iter in section_form_path:
+            if len(start_edge) == 0:
+                start_edge.append(section_iter)
+                current_end_edge = section_iter
+                continue
+            if(current_end_edge[1] == section_iter[0]):
+                current_end_edge = section_iter
+            else:
+                end_edge.append(current_end_edge)
+                start_edge.append(section_iter)
+                current_end_edge = section_iter
+        end_edge.append(current_end_edge)
+        return list(zip(start_edge, end_edge))
 
 # a = TrainProblemConstrained(INPUT_MODEL, ROUTE_GRAPH_FOLDER)
 # print(a.latest_requirements())

@@ -8,6 +8,7 @@ import math
 import json
 import re
 import copy
+import itertools
 
 #Input File
 problem_string = "01_dummy"
@@ -76,16 +77,9 @@ def main():
 
     # Path constraints
     for constraint in section_union_data[service_intention]:
-      try:
-        lhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[0] ])
-        rhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[1] ])
-        model.Add(lhs==rhs)
-      except:
-        print("\n########################\n")
-        print(constraint, service_intention, len(x))
-        print(problem.edge_to_sequence_number(service_intention, constraint[0][0][0], constraint[0][0][1])-1)
-        print(problem.edge_to_sequence_number(service_intention, constraint[0][-1][0], constraint[0][-1][1])-1)
-        raise Exception("Exiting..")
+      lhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[0] ])
+      rhs = sum([ x[problem.edge_to_sequence_number(service_intention, edges[0], edges[1])-1] for edges in constraint[1] ])
+      model.Add(lhs==rhs)
 
     # Loss function
     for constraint in latest_requirements[service_intention]:
@@ -135,27 +129,43 @@ def main():
     all_vars = all_vars+x+s+d
 
   service_intention_keys = list(num_tracks.keys())
+  service_combinations = itertools.combinations(service_intention_keys, 2)
   #Could be made more efficient
-  for i in range(len(service_intention_keys)-1):
-    for j in range(i+1, len(service_intention_keys)):
-      service_intention_1 = service_intention_keys[i]
-      service_intention_2 = service_intention_keys[j]
-      resource_sections_1 = problem.get_sections_with_resource(service_intention_1)
-      resource_sections_2 = problem.get_sections_with_resource(service_intention_2)
-      common_resource = problem.get_common_resources(resource_sections_1, resource_sections_2)
+  for service_combination in service_combinations:
+    service_intention_1 = service_combination[0]
+    service_intention_2 = service_combination[1]
+    resource_sections_1 = problem.get_sections_with_resource(service_intention_1)
+    resource_sections_2 = problem.get_sections_with_resource(service_intention_2)
+    common_resource = problem.get_common_resources(resource_sections_1, resource_sections_2)
 
-      for cr in common_resource:
-        section1 = problem.edge_to_sequence_number(service_intention_1, cr[0], cr[1])
-        section2 = problem.edge_to_sequence_number(service_intention_2, cr[0], cr[1])
-        a = section_entry_time[service_intention_1][section1-1]
-        b = section_entry_time[service_intention_2][section2-1]
-        c = section_exit_time[service_intention_1][section1-1]
-        d = section_exit_time[service_intention_2][section2-1]
-        for res in resource_sections_1[cr]:
-          dR = problem.get_release_time(res)
-          # print(common_resource, resource_sections_1, dR)
-          model.Add((a >= b)*(a) >= (a >= b)*(d + dR))
-          model.Add((a <= b)*(b) >= (a <= b)*(c + dR))
+    for resource in common_resource:
+      print("resources: ", resource, resource_sections_1.keys())
+      section1 = resource_sections_1[resource]
+      section2 = resource_sections_2[resource]
+
+      #join sections to form a path
+      print("Section-1", section1)
+      print("Section-2", section2)
+
+      ## combining edges to form a path
+      path_section1 = problem.get_path_from_section(section1)
+      path_section2 = problem.get_path_from_section(section2)
+      
+      path_combinations = itertools.product(path_section1, path_section2)
+      for pathc in path_combinations:
+        p1, p2 = pathc[0], pathc[1]
+        p1_start_edge = problem.edge_to_sequence_number(service_intention_1, p1[0][0], p1[0][1])
+        p1_end_edge = problem.edge_to_sequence_number(service_intention_1, p1[1][0], p1[1][1])
+        p2_start_edge = problem.edge_to_sequence_number(service_intention_2, p2[0][0], p2[0][1])
+        p2_end_edge = problem.edge_to_sequence_number(service_intention_2, p2[1][0], p2[1][1])
+        a = section_entry_time[service_intention_1][p1_start_edge - 1]
+        b = section_entry_time[service_intention_2][p2_start_edge - 1]
+        c = section_exit_time[service_intention_1][p1_end_edge - 1]
+        d = section_exit_time[service_intention_2][p2_end_edge - 1]
+        dR = problem.get_release_time(resource)
+        # print(common_resource, resource_sections_1, dR)
+        model.Add((a >= b)*(a) >= (a >= b)*(d + dR))
+        model.Add((a <= b)*(b) >= (a <= b)*(c + dR))
 
   db = solver.Phase(all_vars, solver.CHOOSE_FIRST_UNBOUND, solver.ASSIGN_MIN_VALUE)
   solutions_limit = solver.SolutionsLimit(1)
