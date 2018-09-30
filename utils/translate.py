@@ -110,8 +110,8 @@ def write_json(d, path, suffix=""):
     print(f"Wrote file {out_file}")
 
 
-GER_2_ENG, ENG_2_GER = setup_translation_table("translation_table.csv")
-GER_2_ENG_MESSAGE, ENG_2_GER_MESSAGE = setup_translation_table("translation_message_table.csv")
+GER_2_ENG, ENG_2_GER = setup_translation_table("utils/translation_table.csv")
+GER_2_ENG_MESSAGE, ENG_2_GER_MESSAGE = setup_translation_table("utils/translation_message_table.csv")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='translate.py')

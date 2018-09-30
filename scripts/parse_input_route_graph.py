@@ -58,7 +58,7 @@ class RouteGraph:
                 return self.service_intention_graphs[service_intention].edges[(start_node, end_node)]["track_wise_sequence_number"]
         return None
     
-    def section_marker_to_sequence_number(self, service_intention, section_marker):
+    def section_marker_to_track_wise_sequence_number(self, service_intention, section_marker):
         edge_list = []
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
@@ -76,13 +76,43 @@ class RouteGraph:
             return edge_list
         return None
     
-    def sequence_number_to_section_marker(self, service_intention, sequence_number):
+    def track_wise_sequence_number_to_section_marker(self, service_intention, sequence_number):
         sequence_number = int(sequence_number)
         if service_intention in self.service_intention_graphs.keys():
             for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
-                if 'sequence_number' in data.keys() and data['sequence_number'] == sequence_number:
+                if 'track_wise_sequence_number' in data.keys() and data['track_wise_sequence_number'] == sequence_number:
                     if 'section_marker' in data.keys():
                         return data['section_marker']
+                    else:
+                        return None
+        return None
+    
+    def track_wise_sequence_number_to_route_path_id(self, service_intention, sequence_number):
+        sequence_number = int(sequence_number)
+        if service_intention in self.service_intention_graphs.keys():
+            for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
+                if 'track_wise_sequence_number' in data.keys() and data['track_wise_sequence_number'] == sequence_number:
+                    if 'route_path_id' in data.keys():
+                        return data['route_path_id']
+                    else:
+                        return None
+        return None
+    
+    def track_wise_sequence_number_to_edge(self, service_intention, sequence_number):
+        sequence_number = int(sequence_number)
+        if service_intention in self.service_intention_graphs.keys():
+            for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
+                if 'track_wise_sequence_number' in data.keys() and data['track_wise_sequence_number'] == sequence_number:
+                    return (start_node, end_node)
+        return None
+    
+    def track_wise_sequence_number_to_sequence_number(self, service_intention, track_wise_sequence_number):
+        track_wise_sequence_number = int(track_wise_sequence_number)
+        if service_intention in self.service_intention_graphs.keys():
+            for start_node, end_node, data in self.service_intention_graphs[service_intention].edges(data = True):
+                if 'track_wise_sequence_number' in data.keys() and data['track_wise_sequence_number'] == track_wise_sequence_number:
+                    if 'sequence_number' in data.keys():
+                        return data['sequence_number']
                     else:
                         return None
         return None
@@ -252,17 +282,34 @@ class TrainProblemConstrained:
                         run_times[service][edge] += waiting_times[service][edge]
         return run_times
 
-    def edge_to_sequence_number(self, service_intention, start_node, end_node):
+    def edge_to_track_wise_sequence_number(self, service_intention, start_node, end_node):
         return self._routes.edge_to_track_wise_sequence_number(service_intention, start_node, end_node)
     
-    def section_marker_to_sequence_number(self, service_intention, section_marker):
-        return self._routes.section_marker_to_sequence_number(service_intention, section_marker)
+    def section_marker_to_track_wise_sequence_number(self, service_intention, section_marker):
+        return self._routes.section_marker_to_track_wise_sequence_number(service_intention, section_marker)
 
     def section_marker_to_edge(self, service_intention, section_marker):
         return self._routes.section_marker_to_edge(service_intention, section_marker)
 
-    def sequence_number_to_section_marker(self, service_intention, sequence_number):
-        return self._routes.sequence_number_to_section_marker(service_intention, sequence_number)
+    def track_wise_sequence_number_to_section_marker(self, service_intention, sequence_number):
+        return self._routes.track_wise_sequence_number_to_section_marker(service_intention, sequence_number)
+
+    def track_wise_sequence_number_to_edge(self, service_intention, sequence_number):
+        return self._routes.track_wise_sequence_number_to_edge(service_intention, sequence_number)
+
+    def track_wise_sequence_number_to_sequence_number(self, service_intention, track_wise_sequence_number):
+        return self._routes.track_wise_sequence_number_to_sequence_number(service_intention, track_wise_sequence_number)
+   
+    def track_wise_sequence_number_to_route_path_id(self, service_intention, track_wise_sequence_number):
+        return self._routes.track_wise_sequence_number_to_route_path_id(service_intention, track_wise_sequence_number)
+
+    def if_section_marker_referenced_in_section_requirements(self, service_intention, track_wise_sequence_number):
+        section_marker = self.track_wise_sequence_number_to_section_marker(service_intention, track_wise_sequence_number)
+        req = self._trains.get_section_requirements(service_intention)
+        secmark_list = [i['section_marker'] for i in req]
+        if section_marker in secmark_list:
+            return True
+        return False
 
     def to_actual_time(self, time):
         time = int(time)

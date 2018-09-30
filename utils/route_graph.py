@@ -53,7 +53,8 @@ def generate_route_graphs(scenario):
                 res = str(route_section['resource_occupations'])
                 sm = ''
                 if 'section_marker' in route_section.keys():
-                    sm = route_section['section_marker'][0]
+                    if len(route_section['section_marker']):
+                        sm = route_section['section_marker'][0]
                 py = 0.0
                 if route_section['penalty'] is not None:
                     py = route_section['penalty']
@@ -69,7 +70,8 @@ def generate_route_graphs(scenario):
                            resource = res,
                            section_marker = sm,
                            penalty = py,
-                           track_wise_sequence_number = track_wise_sequence_number)
+                           track_wise_sequence_number = track_wise_sequence_number,
+                           route_path_id = str(path["id"]))
 
         route_graphs[route["id"]] = G
 
@@ -99,7 +101,7 @@ def save_graph(route_graphs, output_folder):
 # scratch######################################
 
 if __name__ == "__main__":
-    problem_str = "01_dummy"
+    problem_str = "sample_scenario"
     scenario = "sample_files/" + problem_str + ".json"
     output_folder = "route_graphs/" + problem_str + "/"
     with open(scenario) as fp:
